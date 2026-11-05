@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ตรวจข้อมูลบัญชี</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --panel: #161b24;
+    --panel-2: #1d2530;
+    --line: #2a3442;
+    --ink: #e8edf5;
+    --muted: #8fa0b5;
+    --brand: #4f8cff;
+    --ok: #2ecc71;
+    --warn: #f1c40f;
+    --bad: #e74c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 50% -200px, #1b2a45 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: "Noto Sans Thai", "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 64px; }
+  header h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    margin-top: 22px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+  label { font-size: 13px; color: var(--muted); }
+  input, select, textarea {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--ink);
+    padding: 11px 12px;
+    font: inherit;
+    font-size: 14px;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, .18);
+  }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+  button {
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 12px 20px;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: progress; }
+  .primary { background: var(--brand); color: #fff; }
+  .ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .result { display: none; }
+  .result.show { display: block; }
+  .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .result-head h2 { font-size: 17px; margin: 0; }
+  .badge { font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
+  .badge.normal { background: rgba(46, 204, 113, .16); color: var(--ok); }
+  .badge.temporary { background: rgba(241, 196, 15, .16); color: var(--warn); }
+  .badge.banned { background: rgba(231, 76, 60, .16); color: var(--bad); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 18px; }
+  .stat { background: var(--panel-2); border-radius: 10px; padding: 14px; }
+  .stat span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .stat strong { font-size: 16px; font-weight: 600; word-break: break-all; }
+  .webhook { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .msg { font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .msg.ok { color: var(--ok); }
+  .msg.err { color: var(--bad); }
+  .table-scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+  table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  tbody tr:last-child td { border-bottom: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+  @media (max-width: 640px) {
+    .grid, .stats { grid-template-columns: 1fr; }
+    .wrap { padding: 26px 16px 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ตรวจข้อมูลบัญชี</h1>
+    <p>กรอกข้อมูลที่เกมแสดงให้คุณเห็น (UID, ชื่อในเกม, เลเวล) แล้วส่งรายงานเข้า Discord webhook — ไม่ต้องใช้รหัสผ่านบัญชี</p>
+  </header>
+
+  <form class="card" id="form">
+    <div class="grid">
+      <div class="field">
+        <label for="uid">UID</label>
+        <input id="uid" name="uid" inputmode="numeric" autocomplete="off" placeholder="เช่น 8384230038" required />
+      </div>
+      <div class="field">
+        <label for="nickname">ชื่อในเกม</label>
+        <input id="nickname" name="nickname" autocomplete="off" placeholder="ชื่อที่แสดงในเกม" required />
+      </div>
+      <div class="field">
+        <label for="level">เลเวล</label>
+        <input id="level" name="level" type="number" min="1" max="100" placeholder="เช่น 42" required />
+      </div>
+      <div class="field">
+        <label for="status">สถานะบัญชี</label>
+        <select id="status" name="status">
+          <option value="normal">ปกติ</option>
+          <option value="temporary">ถูกระงับชั่วคราว</option>
+          <option value="banned">ถูกแบน</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="note">หมายเหตุ (ไม่บังคับ)</label>
+        <textarea id="note" name="note" placeholder="เช่น ข้อมูลจากหน้าโปรไฟล์ในเกม"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" type="submit" id="submit">เช็คข้อมูล</button>
+    </div>
+    <div class="msg" id="formMsg"></div>
+  </form>
+
+  <section class="card result" id="result">
+    <div class="result-head">
+      <h2>ผลการตรวจ</h2>
+      <span class="badge" id="badge">ปกติ</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>UID</span><strong id="rUid">—</strong></div>
+      <div class="stat"><span>ชื่อในเกม</span><strong id="rName">—</strong></div>
+      <div class="stat"><span>เลเวล</span><strong id="rLevel">—</strong></div>
+      <div class="stat"><span>ช่วงเลเวล</span><strong id="rTier">—</strong></div>
+      <div class="stat"><span>สถานะบัญชี</span><strong id="rStatus">—</strong></div>
+      <div class="stat"><span>เวลาตรวจ</span><strong id="rTime">—</strong></div>
+    </div>
+
+    <div class="webhook">
+      <div class="field">
+        <label for="webhook">Discord webhook URL</label>
+        <input id="webhook" placeholder="https://discord.com/api/webhooks/..." autocomplete="off" />
+      </div>
+      <p class="hint">URL ถูกเก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น และส่งผ่านเซิร์ฟเวอร์ของแอปนี้ไปยัง Discord</p>
+      <div class="actions">
+        <button class="ghost" type="button" id="send">ส่งเข้า Discord</button>
+      </div>
+      <div class="msg" id="sendMsg"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 style="font-size:16px;margin:0 0 14px">รายการล่าสุด</h2>
+    <div id="history"></div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const WEBHOOK_KEY = "discord_webhook_url";
+let current = null;
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleString("th-TH", {
+    dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok"
+  });
+}
+
+function showMsg(el, text, kind) {
+  el.textContent = text;
+  el.className = "msg " + (kind || "");
+}
+
+async function loadHistory() {
+  const box = $("history");
+  try {
+    const res = await fetch("/api/checks");
+    const rows = await res.json();
+    if (!rows.length) {
+      box.innerHTML = '<p class="empty">ยังไม่มีรายการที่ตรวจ</p>';
+      return;
+    }
+    box.innerHTML = `<div class="table-scroll"><table><thead><tr>
+      <th>UID</th><th>ชื่อ</th><th>เลเวล</th><th>สถานะ</th><th>เวลาตรวจ</th>
+    </tr></thead><tbody>${rows.map((r) => `<tr>
+      <td>${r.uid}</td><td>${r.nickname}</td><td>${r.level}</td>
+      <td>${r.status_label}</td><td>${fmtTime(r.checked_at)}</td>
+    </tr>`).join("")}</tbody></table></div>`;
+  } catch (err) {
+    box.innerHTML = '<p class="empty">โหลดรายการไม่สำเร็จ</p>';
+  }
+}
+
+$("form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const btn = $("submit");
+  btn.disabled = true;
+  showMsg($("formMsg"), "", "");
+  try {
+    const payload = {
+      uid: $("uid").value.trim(),
+      nickname: $("nickname").value.trim(),
+      level: Number($("level").value),
+      status: $("status").value,
+      note: $("note").value.trim(),
+    };
+    const res = await fetch("/api/checks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail?.[0]?.msg || data.detail || "ตรวจไม่สำเร็จ");
+
+    current = data;
+    $("rUid").textContent = data.uid;
+    $("rName").textContent = data.nickname;
+    $("rLevel").textContent = data.level;
+    $("rTier").textContent = data.tier;
+    $("rStatus").textContent = data.status_label;
+    $("rTime").textContent = fmtTime(data.checked_at);
+    $("badge").textContent = data.status_label;
+    $("badge").className = "badge " + data.status;
+    $("result").classList.add("show");
+    showMsg($("sendMsg"), "", "");
+    showMsg($("formMsg"), "บันทึกผลการตรวจแล้ว", "ok");
+    loadHistory();
+  } catch (err) {
+    showMsg($("formMsg"), err.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("send").addEventListener("click", async () => {
+  if (!current) return;
+  const btn = $("send");
+  const url = $("webhook").value.trim();
+  if (!url) {
+    showMsg($("sendMsg"), "กรุณาวาง Discord webhook URL", "err");
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/checks/${current.id}/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ webhook_url: url }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "ส่งไม่สำเร็จ");
+    localStorage.setItem(WEBHOOK_KEY, url);
+    showMsg($("sendMsg"), "ส่งเข้า Discord แล้ว", "ok");
+  } catch (err) {
+    showMsg($("sendMsg"), err.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("webhook").value = localStorage.getItem(WEBHOOK_KEY) || "";
+loadHistory();
+</script>
+</body>
+</html>
