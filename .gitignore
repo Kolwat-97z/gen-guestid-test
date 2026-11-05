@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+# Local secrets (Discord webhook URL)
+.env
+*.env
+!*.env.example
+
+# Checker output
+level-ck/Results/
