@@ -87,6 +87,7 @@ def index():
         max_accounts=MAX_ACCOUNTS,
         account_api=checker.JWT_GEN_API,
         info_api=checker.INFO_API,
+        demo_mode=os.environ.get("DEMO_MODE") == "1",
     )
 
 
