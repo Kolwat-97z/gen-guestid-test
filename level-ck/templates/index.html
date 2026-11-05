@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guest Level Checker</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --ok: #059669;
+    --warn: #b45309;
+    --bad: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", sans-serif;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 18px 56px; }
+  header h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-top: 18px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+  label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  textarea {
+    width: 100%;
+    min-height: 170px;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fbfcfe;
+  }
+  textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.55; cursor: default; }
+  .primary { background: var(--accent); color: #fff; }
+  .ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+  .status { color: var(--muted); font-size: 14px; }
+  .status.error { color: var(--bad); font-weight: 600; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; }
+  .stat .n { font-size: 22px; font-weight: 700; display: block; line-height: 1.2; }
+  .stat .t { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat.p { border-left: 3px solid var(--ok); }
+  .stat.m { border-left: 3px solid var(--accent); }
+  .stat.s { border-left: 3px solid var(--warn); }
+  .stat.l { border-left: 3px solid #94a3b8; }
+  .stat.f { border-left: 3px solid var(--bad); }
+  .table-wrap { overflow-x: auto; margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: #fafbff; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.p { background: #ecfdf5; color: var(--ok); }
+  .badge.m { background: var(--accent-soft); color: var(--accent); }
+  .badge.s { background: #fffbeb; color: var(--warn); }
+  .badge.l { background: #f1f5f9; color: #475569; }
+  .badge.f { background: #fef2f2; color: var(--bad); }
+  .downloads { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .downloads button { font-size: 13px; padding: 8px 14px; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: #f1f5f9; padding: 1px 5px; border-radius: 5px; }
+  .hidden { display: none; }
+  @media (max-width: 600px) {
+    .wrap { padding: 20px 14px 40px; }
+    header h1 { font-size: 20px; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Guest Level Checker</h1>
+    <p>กรอกบัญชีในเบราว์เซอร์ — รหัสผ่านไม่ถูกบันทึกลงดิสก์ และไม่ถูกส่งกลับจากเซิร์ฟเวอร์</p>
+  </header>
+
+  <form class="card" id="check-form">
+    <label for="accounts">รายการบัญชี (บรรทัดละ 1 บัญชี ในรูปแบบ UID:รหัสผ่าน)</label>
+    <textarea id="accounts" name="accounts" spellcheck="false" autocomplete="off"
+      placeholder="8389700001:รหัสผ่านของบัญชีนี้&#10;8389700002:รหัสผ่านของบัญชีนี้"></textarea>
+    <p class="hint">ตรวจได้สูงสุด {{ max_accounts }} บัญชีต่อครั้ง · บัญชีซ้ำ (UID เดียวกัน) จะถูกนับครั้งเดียว</p>
+    <div class="row">
+      <button class="primary" type="submit" id="check-btn">เริ่มตรวจสอบ</button>
+      <button class="ghost" type="button" id="clear-btn">ล้างข้อมูล</button>
+      <span class="status" id="status"></span>
+    </div>
+  </form>
+
+  <section class="card hidden" id="summary-card">
+    <label>สรุปผล</label>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <section class="card hidden" id="results-card">
+    <label>รายละเอียด</label>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>UID ที่กรอก</th>
+            <th>Account ID</th>
+            <th>ชื่อ</th>
+            <th>เลเวล</th>
+            <th>ภูมิภาค</th>
+            <th>หมวด / สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card hidden" id="downloads-card">
+    <label>ไฟล์ผลลัพธ์</label>
+    <p class="hint">สร้างในเบราว์เซอร์ของคุณเอง ยังไม่มีข้อมูลใดถูกบันทึกไว้ที่เซิร์ฟเวอร์</p>
+    <div class="downloads" id="downloads"></div>
+  </section>
+
+  <details>
+    <summary>ปลายทางที่ใช้ตรวจสอบ</summary>
+    <p class="hint">
+      การตรวจเลเวลยังต้องเรียกบริการภายนอกสองรายการนี้:
+      <br>ตรวจบัญชี: <code>{{ account_api }}</code>
+      <br>ข้อมูลเลเวล: <code>{{ info_api }}</code>
+      <br>เปลี่ยนปลายทางได้ด้วยตัวแปร <code>JWT_ACCOUNT_API</code> และ <code>INFO_API</code> ก่อนเริ่มเซิร์ฟเวอร์
+    </p>
+  </details>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var form = document.getElementById("check-form");
+  var input = document.getElementById("accounts");
+  var checkBtn = document.getElementById("check-btn");
+  var clearBtn = document.getElementById("clear-btn");
+  var statusEl = document.getElementById("status");
+  var summaryCard = document.getElementById("summary-card");
+  var summaryEl = document.getElementById("summary");
+  var resultsCard = document.getElementById("results-card");
+  var resultsBody = document.getElementById("results-body");
+  var downloadsCard = document.getElementById("downloads-card");
+  var downloadsEl = document.getElementById("downloads");
+
+  var ORDER = ["22+ Lvl", "20-21 Lvl", "8-19 Lvl", "< 8 Lvl"];
+  var BADGE = { "22+ Lvl": "p", "20-21 Lvl": "m", "8-19 Lvl": "s", "< 8 Lvl": "l" };
+  var FILE_FOR_CATEGORY = {
+    "22+ Lvl": "22-lvl_Accounts.txt",
+    "20-21 Lvl": "20-21-lvl_Accounts.txt",
+    "8-19 Lvl": "8-19-lvl_Accounts.txt",
+    "< 8 Lvl": "Below-8_Accounts.txt"
+  };
+
+  var credentialByUid = new Map();
+
+  function esc(value) {
+    return String(value === null || value === undefined ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function uidOf(line) {
+    var index = line.indexOf(":");
+    return index === -1 ? line : line.slice(0, index);
+  }
+
+  function rememberCredentials(raw) {
+    credentialByUid = new Map();
+    raw.split(/\r?\n/).forEach(function (line) {
+      var trimmed = line.trim();
+      if (!trimmed || trimmed.charAt(0) === "#") return;
+      var uid = uidOf(trimmed).trim();
+      if (uid && !credentialByUid.has(uid)) credentialByUid.set(uid, trimmed);
+    });
+  }
+
+  function setStatus(text, isError) {
+    statusEl.textContent = text || "";
+    statusEl.className = "status" + (isError ? " error" : "");
+  }
+
+  function resetOutput() {
+    summaryCard.classList.add("hidden");
+    resultsCard.classList.add("hidden");
+    downloadsCard.classList.add("hidden");
+    summaryEl.innerHTML = "";
+    resultsBody.innerHTML = "";
+    downloadsEl.innerHTML = "";
+  }
+
+  function renderSummary(counts) {
+    var boxes = ORDER.map(function (category) {
+      var tone = BADGE[category];
+      return '<div class="stat ' + tone + '"><span class="n">' + counts[category] + "</span>" +
+        '<span class="t">' + esc(category) + "</span></div>";
+    });
+    boxes.push('<div class="stat f"><span class="n">' + counts.failed + "</span>" +
+      '<span class="t">ล้มเหลว</span></div>');
+    summaryEl.innerHTML = boxes.join("");
+    summaryCard.classList.remove("hidden");
+  }
+
+  function renderRows(results) {
+    resultsBody.innerHTML = results.map(function (item) {
+      if (item.status !== "success") {
+        return "<tr><td>" + esc(item.uid) + "</td><td>" + esc(item.account_id || "—") +
+          "</td><td>—</td><td>—</td><td>—</td><td><span class=\"badge f\">ล้มเหลว: " +
+          esc(item.error) + "</span></td></tr>";
+      }
+      return "<tr><td>" + esc(item.uid) + "</td><td>" + esc(item.account_id) + "</td><td>" +
+        esc(item.nickname) + "</td><td>" + esc(item.level) + "</td><td>" + esc(item.region) +
+        "</td><td><span class=\"badge " + BADGE[item.category] + "\">" + esc(item.category) +
+        "</span></td></tr>";
+    }).join("");
+    resultsCard.classList.remove("hidden");
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function renderDownloads(results) {
+    var ok = results.filter(function (item) { return item.status === "success"; });
+    var failed = results.filter(function (item) { return item.status !== "success"; });
+    var files = [];
+
+    files.push({
+      name: "Valid_Accounts.txt",
+      lines: ok.map(function (item) {
+        return "UID: " + item.account_id + " | Name: " + item.nickname + " | Level: " +
+          item.level + " | Region: " + item.region;
+      })
+    });
+
+    files.push({
+      name: "Details_Accounts.txt",
+      lines: ok.map(function (item) {
+        return (credentialByUid.get(item.uid) || item.account_id) + " | Level: " + item.level +
+          " | Name: " + item.nickname;
+      })
+    });
+
+    ORDER.forEach(function (category) {
+      files.push({
+        name: FILE_FOR_CATEGORY[category],
+        lines: ok.filter(function (item) { return item.category === category; })
+          .map(function (item) { return credentialByUid.get(item.uid) || item.account_id; })
+      });
+    });
+
+    files.push({
+      name: "Failed_Accounts.txt",
+      lines: failed.map(function (item) { return item.uid + " | " + (item.error || "unknown error"); })
+    });
+
+    downloadsEl.innerHTML = "";
+    files.forEach(function (file) {
+      if (!file.lines.length) return;
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "ghost";
+      button.textContent = file.name + " (" + file.lines.length + ")";
+      button.addEventListener("click", function () {
+        download(file.name, file.lines.join("\n") + "\n");
+      });
+      downloadsEl.appendChild(button);
+    });
+    downloadsCard.classList.toggle("hidden", downloadsEl.children.length === 0);
+  }
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var raw = input.value;
+    rememberCredentials(raw);
+
+    resetOutput();
+    checkBtn.disabled = true;
+    setStatus("กำลังตรวจสอบ...", false);
+
+    fetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accounts: raw })
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        return { ok: response.ok, data: data };
+      });
+    }).then(function (payload) {
+      if (!payload.ok) {
+        setStatus(payload.data.error || "เกิดข้อผิดพลาด", true);
+        return;
+      }
+      setStatus("ตรวจเสร็จ " + payload.data.total + " บัญชี", false);
+      renderSummary(payload.data.counts);
+      renderRows(payload.data.results);
+      renderDownloads(payload.data.results);
+    }).catch(function (error) {
+      setStatus("เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: " + error.message, true);
+    }).then(function () {
+      checkBtn.disabled = false;
+    });
+  });
+
+  clearBtn.addEventListener("click", function () {
+    input.value = "";
+    credentialByUid = new Map();
+    resetOutput();
+    setStatus("", false);
+    input.focus();
+  });
+})();
+</script>
+</body>
+</html>
